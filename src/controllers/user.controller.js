@@ -54,7 +54,7 @@ const registerUser = asyncHandler( async (req,res) => {
     registeredUser.refreshToken = refreshToken;
     await registeredUser.save();
 
-    const verificationUrl = `http://localhost:8080/api/v1/user/verify-email?token=${verificationToken}&email=${email}`;
+    const verificationUrl = `https://mobile-app-backend-wf43.onrender.com/api/v1/user/verify-email?token=${verificationToken}&email=${email}`;
 
     const mailOptions = {
         from:'sunnyvermaverma2005@gmail.com',
