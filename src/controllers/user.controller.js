@@ -18,7 +18,7 @@ const validatePassword = (password) => {
 const registerUser = asyncHandler( async (req,res) => {
     const {name,email,password} = req.body;
 
-    if(!name || !email || !password){
+    if(!name || !email || !password){ 
         throw new ApiError(400,'All Fields are Required');
     }
 
@@ -203,6 +203,10 @@ const loginUser = asyncHandler( async (req,res) => {
     const user = await User.findOne({email});
     if(!user || !user.isPasswordCorrect(password)){
         throw new ApiError(401,'Invalid email or password');
+    }
+
+    if(!user.verified){
+        throw new ApiError(401,"User must be verified. Go to your email to verify user");
     }
 
     const accessToken = user.generateAccessToken();
