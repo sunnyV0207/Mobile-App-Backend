@@ -48,11 +48,11 @@ const registerUser = asyncHandler( async (req,res) => {
         throw new ApiError(500,"User can't registered");
     }
 
-    const accessToken = registeredUser.generateAccessToken();
-    const refreshToken = registeredUser.generateRefreshToken();
+    // const accessToken = registeredUser.generateAccessToken();
+    // const refreshToken = registeredUser.generateRefreshToken();
 
-    registeredUser.refreshToken = refreshToken;
-    await registeredUser.save();
+    // registeredUser.refreshToken = refreshToken;
+    // await registeredUser.save();
 
     const verificationUrl = `https://mobile-app-backend-wf43.onrender.com/api/v1/user/verify-email?token=${verificationToken}&email=${email}`;
 
@@ -78,10 +78,10 @@ const registerUser = asyncHandler( async (req,res) => {
             'User registered successfully',
             {
                 registeredUser,
-                tokens:{
-                    accessToken,
-                    refreshToken
-                }
+                // tokens:{
+                //     accessToken,
+                //     refreshToken
+                // }
             }
         )
     )
