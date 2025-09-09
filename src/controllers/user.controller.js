@@ -15,31 +15,39 @@ const validatePassword = (password) => {
     return passwordRegex.test(password);
 }
 
-const registerUser = asyncHandler( async (req,res) => {
-    const {name,email,password} = req.body;
+const generateOTP = () => {
+  return Math.floor(100000 + Math.random() * 900000);
+}
 
-    if(!name || !email || !password){ 
+const registerUser = asyncHandler( async (req,res) => {
+    const {name,email,phone,password,cnfPassword} = req.body;
+
+    if(!name || !email || !phone || !password || !cnfPassword){ 
         throw new ApiError(400,'All Fields are Required');
     }
 
-    const alreadyUsedEmail = await User.findOne({email});
+    const alreadyUsedEmailorPhone = await User.findOne({$or:[{email},{phone}]});
 
-    if(alreadyUsedEmail){
-        throw new ApiError(409,'Email is already in use. Try other one!!')
+    if(alreadyUsedEmailorPhone){
+        throw new ApiError(409,'Email or phone is already in use. Try other one!!')
     }
 
     if(!validatePassword(password)){
         throw new ApiError(400,'❌ Password does not meet requirements');
     }
 
-    const verificationToken = crypto.randomBytes(32).toString('hex');
+    if(password !== cnfPassword){
+        throw new ApiError(401,'❌ Password does not match the confirm password');
+    }
+
+    const otp = generateOTP();
 
     const user = await User.create({
         name,
         email,
+        phone,
         password,
-        verified:false,
-        verificationToken
+        verified:false
     });
 
     const registeredUser = await User.findById(user._id).select("-password -refreshToken");
@@ -54,21 +62,21 @@ const registerUser = asyncHandler( async (req,res) => {
     // registeredUser.refreshToken = refreshToken;
     // await registeredUser.save();
 
-    const verificationUrl = `https://mobile-app-backend-wf43.onrender.com/api/v1/user/verify-email?token=${verificationToken}&email=${email}`;
+    // const verificationUrl = `https://mobile-app-backend-wf43.onrender.com/api/v1/user/verify-email?token=${verificationToken}&email=${email}`;
 
-    const mailOptions = {
-        from:'sunnyvermaverma2005@gmail.com',
-        to:email,
-        subject:"Verify your email",
-        html: `
-            <p>Hi ${name},</p>
-            <p>Thank you for registering. Please verify your email by clicking the link below:</p>
-            <a href="${verificationUrl}">Verify Email</a>
-            <p>If you did not create an account, please ignore this email.</p>
-        `
-    };
+    // const mailOptions = {
+    //     from:'sunnyvermaverma2005@gmail.com',
+    //     to:email,
+    //     subject:"Verify your email",
+    //     html: `
+    //         <p>Hi ${name},</p>
+    //         <p>Thank you for registering. Please verify your email by clicking the link below:</p>
+    //         <a href="${verificationUrl}">Verify Email</a>
+    //         <p>If you did not create an account, please ignore this email.</p>
+    //     `
+    // };
 
-    await transporter.sendMail(mailOptions);
+    // await transporter.sendMail(mailOptions);
 
     return res
     .status(200)

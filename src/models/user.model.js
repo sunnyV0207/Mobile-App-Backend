@@ -5,14 +5,23 @@ import jwt from 'jsonwebtoken';
 const userSchema = new Schema(
     {
         name:{
-            type: String
+            type: String,
+            required: true,
+            trim: true
         },
         email:{
             type:String,
             required:true,
             unique:true,
             lowercaes: true,
-            match: [/^\S+@\S+\.\S+$/, "Please provide a valid email"]
+            match: [/^\S+@\S+\.\S+$/, "Please provide a valid email"],
+            trim: true
+        },
+        phone:{
+            type: String,
+            required: true,
+            trim: true,
+            unique: true
         },
         password:{
             type:String,
@@ -22,8 +31,11 @@ const userSchema = new Schema(
             type:Boolean,
             default:false
         },
-        verificationToken:{
-            type:String
+        otp:{
+            type: String
+        },
+        otpExpires:{
+            type: Date
         },
         googleId:{
             type: String,
