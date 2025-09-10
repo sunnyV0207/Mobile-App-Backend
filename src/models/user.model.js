@@ -31,11 +31,8 @@ const userSchema = new Schema(
             type:Boolean,
             default:false
         },
-        otp:{
+        verificationToken:{
             type: String
-        },
-        otpExpires:{
-            type: Date
         },
         googleId:{
             type: String,

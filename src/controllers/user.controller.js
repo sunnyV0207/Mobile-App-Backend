@@ -7,33 +7,34 @@ import { transporter } from "../utilities/transporter.js";
 
 // import axios from 'axios';
 import crypto from 'crypto';
-import twilio from "twilio";
-import Api from "twilio/lib/rest/Api.js";
+// import twilio from "twilio";
+// import Api from "twilio/lib/rest/Api.js";
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-const otpVerificationClient = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
+// const otpVerificationClient = new twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
 
 const validatePassword = (password) => {
     const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,}$/;
     return passwordRegex.test(password);
 }
 
-const generateOTP = () => {
-  return Math.floor(100000 + Math.random() * 900000);
-}
+// const generateOTP = () => {
+//   return Math.floor(100000 + Math.random() * 900000);
+// }
 
-async function sendOTP(phone, otp) {
-  try {
-    const message = await otpVerificationClient.messages.create({
-      body: `Your OTP is ${otp}. It will expire in 5 minutes.`,
-      from: process.env.TWILIO_PHONE, // Twilio number
-      to: phone, // recipient number
-    });
-    console.log("Message SID:", message.sid);
-  } catch (error) {
-    console.error("Error sending OTP:", error);
-  }
-}
+// async function sendOTP(phone, otp) {
+//     console.log("inside sendotp function");
+//   try {
+//     const message = await otpVerificationClient.messages.create({
+//       body: `Your OTP is ${otp}. It will expire in 5 minutes.`,
+//       from: process.env.TWILIO_PHONE, // Twilio number
+//       to: `+91${phone}`, // recipient number
+//     });
+//     console.log("Message SID:", message.sid);
+//   } catch (error) {
+//     console.error("Error sending OTP:", error);
+//   }
+// }
 
 const registerUser = asyncHandler( async (req,res) => {
     const {name,email,phone,password,cnfPassword} = req.body;
@@ -72,27 +73,27 @@ const registerUser = asyncHandler( async (req,res) => {
         throw new ApiError(500,"User can't registered");
     }
 
-    // const accessToken = registeredUser.generateAccessToken();
-    // const refreshToken = registeredUser.generateRefreshToken();
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+    registeredUser.verificationToken = verificationToken;
+    await registeredUser.save();
 
-    // registeredUser.refreshToken = refreshToken;
-    // await registeredUser.save();
+    const verificationUrl = `https://mobile-app-backend-wf43.onrender.com/api/v1/user/verify-user?token=${verificationToken}&email=${email}`;
 
-    // const verificationUrl = `https://mobile-app-backend-wf43.onrender.com/api/v1/user/verify-email?token=${verificationToken}&email=${email}`;
+    const mailOptions = {
+        from:'sunnyvermaverma2005@gmail.com',
+        to:email,
+        subject:"Verify your email",
+        html: `
+            <p>Hi ${name},</p>
+            <p>Thank you for registering. Please verify your email by clicking the link below:</p>
+            <a href="${verificationUrl}">Verify Email</a>
+            <p>If you did not create an account, please ignore this email.</p>
+        `
+    };
 
-    // const mailOptions = {
-    //     from:'sunnyvermaverma2005@gmail.com',
-    //     to:email,
-    //     subject:"Verify your email",
-    //     html: `
-    //         <p>Hi ${name},</p>
-    //         <p>Thank you for registering. Please verify your email by clicking the link below:</p>
-    //         <a href="${verificationUrl}">Verify Email</a>
-    //         <p>If you did not create an account, please ignore this email.</p>
-    //     `
-    // };
-
-    // await transporter.sendMail(mailOptions);
+    console.log("Sending mail");
+    await transporter.sendMail(mailOptions);
+    console.log("mail sent");
 
     return res
     .status(200)
@@ -101,61 +102,21 @@ const registerUser = asyncHandler( async (req,res) => {
             200,
             'User registered successfully',
             {
-                registeredUser,
-                // tokens:{
-                //     accessToken,
-                //     refreshToken
-                // }
+                registeredUser
             }
         )
     )
 
 } );
 
-// const verifyEmail = asyncHandler(async(req,res,next)=>{
-//     const { token, email } = req.query;
+const verifyEmail = asyncHandler(async(req,res,next)=>{
+    const { token, email } = req.query;
 
-//     const user = await User.findOne({ email, verificationToken: token });
-//     if (!user) throw new ApiError(400, 'Invalid or expired token');
+    const user = await User.findOne({ email, verificationToken: token });
+    if (!user) throw new ApiError(400, 'Invalid or expired token');
 
-//     user.verified = true;
-//     user.verificationToken = undefined;
-//     await user.save();
-
-//     res.status(200).json({ message: 'Email verified successfully!' });
-// })
-
-const verifyUser = asyncHandler(async(req,res,next)=>{
-    const {email,phone,otp} = req.body;
-
-    if(!otp || (!email && !phone)){
-        throw new ApiError(400,'Otp and email/phone is required');
-    }
-
-    const user = await User.findOne({$or:[{email},{phone}]});
-
-    if(!user){
-        throw new ApiError(401,'User do not exists');
-    }
-
-    let validOtp = false;
-
-    if (email && user.otp === otp && user.otpExpires > Date.now()) {
-      validOtp = true;
-      user.verified = true;
-      user.otp = undefined;
-      user.otpExpires = undefined;
-    } else if (phone && user.otp === otp && user.otpExpires > Date.now()) {
-      validOtp = true;
-      user.verified = true;
-      user.otp = undefined;
-      user.otpExpires = undefined;
-    }
-
-    if (!validOtp) {
-      return res.status(400).json({ message: "Invalid or expired OTP" });
-    }
-
+    user.verified = true;
+    user.verificationToken = undefined;
     await user.save();
 
     res
@@ -163,11 +124,54 @@ const verifyUser = asyncHandler(async(req,res,next)=>{
     .json(
         new ApiResponse(
             200,
-            'User verified Successfully'
+            "User verified Successfully"
         )
-    )
-
+    );
 })
+
+// const verifyUser = asyncHandler(async(req,res,next)=>{
+//     const {email,phone,otp} = req.body;
+
+//     if(!otp || (!email && !phone)){
+//         throw new ApiError(400,'Otp and email/phone is required');
+//     }
+
+//     const user = await User.findOne({$or:[{email},{phone}]});
+
+//     if(!user){
+//         throw new ApiError(401,'User do not exists');
+//     }
+
+//     let validOtp = false;
+
+//     if (email && user.otp === otp && user.otpExpires > Date.now()) {
+//       validOtp = true;
+//       user.verified = true;
+//       user.otp = undefined;
+//       user.otpExpires = undefined;
+//     } else if (phone && user.otp === otp && user.otpExpires > Date.now()) {
+//       validOtp = true;
+//       user.verified = true;
+//       user.otp = undefined;
+//       user.otpExpires = undefined;
+//     }
+
+//     if (!validOtp) {
+//       return res.status(400).json({ message: "Invalid or expired OTP" });
+//     }
+
+//     await user.save();
+
+//     res
+//     .status(200)
+//     .json(
+//         new ApiResponse(
+//             200,
+//             'User verified Successfully'
+//         )
+//     )
+
+// })
 
 const googleAuth = asyncHandler( async (req,res) => {
 
@@ -262,43 +266,20 @@ const googleAuth = asyncHandler( async (req,res) => {
 
 const loginUser = asyncHandler( async (req,res) => {
 
-    const {email,phone} = req.body;
+    const {email} = req.body;
 
-    if(!email && !phone){
-        throw new ApiError(400,'Emal or Phone is required');
+    if(!email){
+        throw new ApiError(400,'Email is required');
     }
 
-    const user = await User.findOne({$or:[{email},{phone}]});
+    const user = await User.findOne({email});
 
     if(!user){
-        throw new ApiError(401,'Invalid email or phone');
+        throw new ApiError(401,'Invalid email');
     }
 
-    const otp = generateOTP();
-    const otpExpires = new Date(Date.now() + 5 * 60 * 1000);
-
-    user.otp = otp;
-    user.otpExpires = otpExpires;
-
-    if(email){
-
-        const mailOptions = {
-            from:'sunnyvermaverma2005@gmail.com',
-            to:email,
-            subject:"Verify your email",
-            html: `
-                <p>Hi ${user.name},</p>
-                <p>Thank you for registering. This is your otp to verify your email. The otp will expire in 5 minutes</p>
-                <p>${otp}</p>
-                <p>If you did not create an account, please ignore this email.</p>
-            `
-        };
-
-        await transporter.sendMail(mailOptions);
-
-    }else if(phone){
-
-        await sendOTP(phone,otp);
+    if(!user.verified){
+        throw new ApiError(401,'User is not verified kindly go to your email to verify user');
     }
 
     const accessToken = user.generateAccessToken();
@@ -328,4 +309,4 @@ const loginUser = asyncHandler( async (req,res) => {
     )
 } )
 
-export {registerUser,googleAuth,loginUser,verifyUser};
+export {registerUser,googleAuth,loginUser,verifyEmail};
