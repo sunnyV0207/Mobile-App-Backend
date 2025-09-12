@@ -309,6 +309,7 @@ const googleAuth = asyncHandler( async (req,res,next) => {
     const refreshToken = user.generateRefreshToken();
 
     user.refreshToken = refreshToken;
+    user.verified = true;
     await user.save();
 
     return res
