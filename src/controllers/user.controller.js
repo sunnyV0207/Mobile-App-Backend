@@ -288,8 +288,9 @@ const googleAuth = asyncHandler( async (req,res,next) => {
 
     const {uid,email,name,phone} = decodedToken;
 
-    const user = await User.findOne({$or:[{email},{googleId:uid}]});
-
+    let user = await User.findOne({$or:[{email},{googleId:uid}]});
+    let created = false;
+    
     if(!user){
         user = new User({
             name,
@@ -298,9 +299,10 @@ const googleAuth = asyncHandler( async (req,res,next) => {
             googleId: uid
         })
         await user.save();
+        created = true;
     }else if(!user.googleId){
         user.googleId = uid;
-        await user.save():
+        await user.save();
     }
 
     const accessToken = user.generateAccessToken();
