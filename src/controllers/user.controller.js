@@ -278,15 +278,55 @@ const googleAuth = asyncHandler( async (req,res,next) => {
     const {idToken} = req.body;
     // console.log(idToken);
     if(!idToken){
-        throw new ApiError(400,"No id Tokoen");
+        throw new ApiError(401,"Google Authentication Failed? Missing Token");
     }
 
-    res
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    if(!decodedToken){
+        throw new ApiError(401,"Invalid IdToken? Try Again");
+    }
+
+    const {uid,email,name,phone} = decodedToken;
+
+    const user = await User.findOne({$or:[{email},{googleId:uid}]});
+
+    if(!user){
+        user = new User({
+            name,
+            email,
+            phone: phone || null,
+            googleId: uid
+        })
+        await user.save();
+    }else if(!user.googleId){
+        user.googleId = uid;
+        await user.save():
+    }
+
+    const accessToken = user.generateAccessToken();
+    const refreshToken = user.generateRefreshToken();
+
+    user.refreshToken = refreshToken;
+    await user.save();
+
+    return res
     .status(200)
     .json(
         new ApiResponse(
-            200,
-            "Id Token received"
+            created ? 201 : 200,
+            created ? 'User Registered Successfully!' : 'User Loggedin Successfully',
+            {
+                user:{
+                    id:user._id,
+                    name:user.name,
+                    email:user.email,
+                    googleId:user.googleId
+                },
+                tokens:{
+                    accessToken,
+                    refreshToken
+                }
+            }
         )
     )
 })
