@@ -13,15 +13,15 @@ const userSchema = new Schema(
             type:String,
             required:true,
             unique:true,
-            lowercaes: true,
+            lowercase: true,
             match: [/^\S+@\S+\.\S+$/, "Please provide a valid email"],
             trim: true
         },
         phone:{
             type: String,
-            required: true,
             trim: true,
-            unique: true
+            unique: true,
+            sparse: true
         },
         password:{
             type:String,
