@@ -7,11 +7,21 @@ import { transporter } from "../utilities/transporter.js";
 
 // import axios from 'axios';
 import crypto from 'crypto';
+import admin from 'firebase-admin';
+import fs from 'fs';
+import path from 'path';
+const serviceAccount = JSON.parse(
+    fs.readFileSync(path.resolve('./service-account.json'), 'utf8')
+);
 // import twilio from "twilio";
 // import Api from "twilio/lib/rest/Api.js";
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 // const otpVerificationClient = new twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
+
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),  // Add path to your service account
+});
 
 const validatePassword = (password) => {
     const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,}$/;
@@ -173,96 +183,113 @@ const verifyEmail = asyncHandler(async(req,res,next)=>{
 
 // })
 
-const googleAuth = asyncHandler( async (req,res) => {
+// const googleAuth = asyncHandler( async (req,res) => {
 
-    // This code is addible in web apps
-    // const {code} = req.body;
-    // console.log(code);
+//     // This code is addible in web apps
+//     // const {code} = req.body;
+//     // console.log(code);
 
-    // if(!code){
-    //     throw new ApiError(400,'Authorization code is missing!');
-    // }
+//     // if(!code){
+//     //     throw new ApiError(400,'Authorization code is missing!');
+//     // }
 
-    // const tokenResponse = await axios.post("https://oauth2.googleapis.com/token", null, {
-    //     params: {
-    //     code,
-    //     client_id: process.env.GOOGLE_CLIENT_ID,
-    //     client_secret: process.env.GOOGLE_CLIENT_SECRET,
-    //     redirect_uri: "postmessage", // 'postmessage' for one-time code from JS frontend
-    //     grant_type: "authorization_code"
-    //     }
-    // });
+//     // const tokenResponse = await axios.post("https://oauth2.googleapis.com/token", null, {
+//     //     params: {
+//     //     code,
+//     //     client_id: process.env.GOOGLE_CLIENT_ID,
+//     //     client_secret: process.env.GOOGLE_CLIENT_SECRET,
+//     //     redirect_uri: "postmessage", // 'postmessage' for one-time code from JS frontend
+//     //     grant_type: "authorization_code"
+//     //     }
+//     // });
 
-    // const {id_token} = tokenResponse?.data;
+//     // const {id_token} = tokenResponse?.data;
 
-    // if(!id_token){
-    //     throw new ApiError(400,'Google Authentication Failed! Missing Token');
-    // }
+//     // if(!id_token){
+//     //     throw new ApiError(400,'Google Authentication Failed! Missing Token');
+//     // }
 
+//     const {idToken} = req.body;
+
+//     let payload;
+
+//     try {
+//         const ticket = await client.verifyIdToken({
+//             // idToken:id_token,
+//             idToken,
+//             audience: process.env.GOOGLE_CLIENT_ID
+//         });
+//         payload = ticket.getPayload();
+//     } catch (error) {
+//         throw new ApiError(401,'Invalid google token');
+//     }
+
+//     const {sub: googleId,email,name} = payload;
+
+//     if(!googleId || !email){
+//         throw new ApiError(400,'Google Aunthentication Failed!');
+//     }
+
+//     let user = await User.findOne({$or:[{googleId},{email}]});
+//     let created = false;
+
+//     if(!user){
+//         user = await User.create({
+//             googleId,
+//             email,
+//             name: name || email.split("@")[0]
+//         });
+//         created = true;
+//     }else if(!user.googleId){
+//         user.googleId = googleId;
+//         await user.save();
+//     }
+
+//     const accessToken = user.generateAccessToken();
+//     const refreshToken = user.generateRefreshToken();
+
+//     user.refreshToken = refreshToken;
+//     await user.save();
+
+//     return res
+//     .status(200)
+//     .json(
+//         new ApiResponse(
+//             created ? 201 : 200,
+//             created ? 'User Registered Successfully!' : 'User Loggedin Successfully',
+//             {
+//                 user:{
+//                     id:user._id,
+//                     name:user.name,
+//                     email:user.email,
+//                     googleId:user.googleId
+//                 },
+//                 tokens:{
+//                     accessToken,
+//                     refreshToken
+//                 }
+//             }
+//         )
+//     )
+
+// } )
+
+const googleAuth = asyncHandler( async (req,res,next) => {
     const {idToken} = req.body;
-
-    let payload;
-
-    try {
-        const ticket = await client.verifyIdToken({
-            // idToken:id_token,
-            idToken,
-            audience: process.env.GOOGLE_CLIENT_ID
-        });
-        payload = ticket.getPayload();
-    } catch (error) {
-        throw new ApiError(401,'Invalid google token');
+    // console.log(idToken);
+    if(!idToken){
+        throw new ApiError(400,"No id Tokoen");
     }
 
-    const {sub: googleId,email,name} = payload;
-
-    if(!googleId || !email){
-        throw new ApiError(400,'Google Aunthentication Failed!');
-    }
-
-    let user = await User.findOne({$or:[{googleId},{email}]});
-    let created = false;
-
-    if(!user){
-        user = await User.create({
-            googleId,
-            email,
-            name: name || email.split("@")[0]
-        });
-        created = true;
-    }else if(!user.googleId){
-        user.googleId = googleId;
-        await user.save();
-    }
-
-    const accessToken = user.generateAccessToken();
-    const refreshToken = user.generateRefreshToken();
-
-    user.refreshToken = refreshToken;
-    await user.save();
-
-    return res
+    res
     .status(200)
     .json(
         new ApiResponse(
-            created ? 201 : 200,
-            created ? 'User Registered Successfully!' : 'User Loggedin Successfully',
-            {
-                user:{
-                    id:user._id,
-                    name:user.name,
-                    email:user.email,
-                    googleId:user.googleId
-                },
-                tokens:{
-                    accessToken,
-                    refreshToken
-                }
-            }
+            200,
+            "Id Token received"
         )
     )
-
-} )
+})
 
 const loginUser = asyncHandler( async (req,res) => {
 
