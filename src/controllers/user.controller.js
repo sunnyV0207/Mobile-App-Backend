@@ -392,7 +392,13 @@ const checkAuth = asyncHandler(async(req,res,next)=>{
         new ApiResponse(
             200,
             "Token verified",
-            user
+            {
+                user:{
+                    id:user._id,
+                    name:user.name,
+                    email:user.email
+                }
+            }
         )
     )
 })
