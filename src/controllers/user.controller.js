@@ -380,4 +380,22 @@ const loginUser = asyncHandler( async (req,res) => {
     )
 } )
 
-export {registerUser,googleAuth,loginUser,verifyEmail};
+const checkAuth = asyncHandler(async(req,res,next)=>{
+    const user = req.user;
+    if(!user){
+        throw new ApiError(400,"Something went wrong");
+    };
+    
+    res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            "Token verified",
+            user
+        )
+    )
+})
+
+
+export {registerUser,googleAuth,loginUser,verifyEmail,checkAuth};
