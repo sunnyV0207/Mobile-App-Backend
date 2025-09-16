@@ -337,10 +337,10 @@ const googleAuth = asyncHandler( async (req,res) => {
 
 const loginUser = asyncHandler( async (req,res) => {
 
-    const {email} = req.body;
+    const {email,password} = req.body;
 
-    if(!email){
-        throw new ApiError(400,'Email is required');
+    if(!email || !password){
+        throw new ApiError(400,'Email or password is required');
     }
 
     const user = await User.findOne({email});
@@ -349,6 +349,12 @@ const loginUser = asyncHandler( async (req,res) => {
         throw new ApiError(401,'Invalid email');
     }
 
+    const isPasswordValid = await User.isPasswordCorrect();
+
+    if(!isPasswordValid){
+        throw new ApiError(400,"Wrong Password. Try again!");
+    }
+    
     if(!user.verified){
         throw new ApiError(401,'User is not verified kindly go to your email to verify user');
     }
