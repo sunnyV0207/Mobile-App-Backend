@@ -349,7 +349,7 @@ const loginUser = asyncHandler( async (req,res) => {
         throw new ApiError(401,'Invalid email');
     }
 
-    const isPasswordValid = await User.isPasswordCorrect();
+    const isPasswordValid = validatePassword(password) && await User.isPasswordCorrect();
 
     if(!isPasswordValid){
         throw new ApiError(400,"Wrong Password. Try again!");
